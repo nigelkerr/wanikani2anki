@@ -8,7 +8,9 @@
 
 # "Update WaniKani Deck" will create if it does not already exist, or
 # add new cards to if it does exist, a deck called "WaniKani".  It
-# will try to add Kanji and Vocabulary that you have stats for yet.
+# will try to add Kanji and Vocabulary that you have stats for so
+# far. Subsequent runs of "Update WaniKani Deck" will add new Kanji
+# and Vocabulary you've learnt since the last run.
 
 # By default it will add a normal card (that will remind of you of how
 # WaniKani shows you normally), and a reversed card.  See MODEL_NAME
@@ -140,6 +142,7 @@ def updateWaniKaniDeck():
         wki.run()
     mw.app.processEvents()
     showInfo('WaniKani deck updated!')
+    mw.deckBrowser.show()
 
 apiaction = QAction("Show WaniKani API Key", mw)
 mw.connect(apiaction, SIGNAL("triggered()"), showApiKey)
