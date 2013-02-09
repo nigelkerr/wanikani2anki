@@ -92,7 +92,7 @@ class VocabImporter(WaniKaniImporter):
     def noteFromJson(self, jsonDict):
         note = ForeignNote()
         note.fields.append(u"<span class='vocab front'>{}</span>".format(jsonDict[u'character']))
-        note.fields.append(u"<span class='vobab back'>{}<br>{}</span>".format(jsonDict[u'kana'], jsonDict[u'meaning']))
+        note.fields.append(u"<span class='vocab back'>{}<br>{}</span>".format(jsonDict[u'kana'], jsonDict[u'meaning']))
         note.tags.append('vocab')
         return note
 
