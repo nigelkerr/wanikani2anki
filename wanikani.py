@@ -44,7 +44,7 @@ import sys
 WANIKANI_API_KEY = 'YOUR_API_KEY_HERE'
 KANJI_URL = 'http://www.wanikani.com/api/v1.1/user/{}/kanji'.format(WANIKANI_API_KEY)
 VOCAB_URL = 'http://www.wanikani.com/api/v1.1/user/{}/vocabulary'.format(WANIKANI_API_KEY)
-MODEL_NAME = "Basic (and reversed card)" # also "Basic"
+MODEL_NAME = "Basic" # Basic (and reversed card)" # also "Basic"
 
 class WaniKaniImporter(NoteImporter):
     def __init__(self, *args):
