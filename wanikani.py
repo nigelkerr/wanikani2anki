@@ -95,6 +95,9 @@ def updateWaniKaniDeck():
         showInfo("We don't seem to have a valid WaniKani API Key, please try to configure it!")
         return
 
+    kanjiJson = None
+    vocabJson = None
+
     if wkconf['deck_separation'] != 'vocabOnly':
         kanjiJson = getkanji()
     if wkconf['deck_separation'] != 'kanjiOnly':
@@ -120,6 +123,7 @@ def updateWaniKaniDeck():
         wki = KanjiImporter(mw.col,kanjiJson)
         wki.initMapping()
         wki.run()
+
     if vocabJson:
         m['did'] = mw.col.decks.id(name2)
         mw.col.models.save(m)
@@ -132,6 +136,7 @@ def updateWaniKaniDeck():
     mw.deckBrowser.show()
 
 def readConf():
+    global wkconf
     conffile = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".wanikani.conf")
     if ( os.path.exists( conffile ) ):
         conffile = conffile.decode(sys.getfilesystemencoding())
@@ -147,6 +152,7 @@ def keyValid():
     return ( wkconf['key'] and re.match('^[a-f0-9]{32}$', wkconf['key']) )
 
 def showConfDialog():
+    global wkconf
     d = QDialog()
     form = forms.configuration.Ui_Dialog()
     form.setupUi(d)
@@ -168,6 +174,9 @@ def showConfDialog():
         wkconf['deck_separation'] = form.deckSeparation.checkedButton().objectName()
         wkconf['card_direction'] = form.cardDirection.checkedButton().objectName()
         writeConf();
+
+    mw.app.processEvents()
+    mw.deckBrowser.show()
 
 readConf()
 
