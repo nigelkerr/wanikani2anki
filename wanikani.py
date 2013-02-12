@@ -1,32 +1,5 @@
 # wanikani2anki, import unlocked Kanji and Vocab from WaniKani to a
-# deck in desktop Anki 2.0.x.  place this file in your desktop Anki 2
-# addons folder, then replace YOUR_API_KEY_HERE below with your
-# 32-character API key from wanikani (see
-# http://www.wanikani.com/account).  Restart Anki 2, and the Tools
-# menu will have two new options, "Show WaniKani API Key" and "Update
-# WaniKani Deck".
-
-# "Update WaniKani Deck" will create if it does not already exist, or
-# add new cards to if it does exist, a deck called "WaniKani".  It
-# will try to add Kanji and Vocabulary that you have stats for so
-# far. Subsequent runs of "Update WaniKani Deck" will add new Kanji
-# and Vocabulary you've learnt since the last run.
-
-# By default it will add a normal card (that will remind of you of how
-# WaniKani shows you normally), and a reversed card.  See MODEL_NAME
-# below if you just want one card, the WaniKani style.
-
-# Kanji will be added with the kanji itself on one side, onyomi,
-# kunyomi, and meaning on the other.  The important reading per
-# WaniKani is bolded.
-
-# Vocab will be added with the vocabulary on one side, reading and
-# meaning on the other.
-
-# A span element surrounds each side of each card, with two css
-# classes applied, one of kanji and vocab, and one of front and back
-# (where front and back are relative to the WaniKani style).  You
-# could use these classes to style these differently with Anki 2.
+# deck in desktop Anki 2.0.x.  
 
 # from https://github.com/nigelkerr/wanikani2anki and in the public
 # domain, with no sort of warranty whatsoever.
@@ -36,15 +9,19 @@ from aqt.utils import showInfo
 from aqt.qt import *
 from anki.importing.noteimp  import NoteImporter, ForeignNote
 
+import wanikaniforms as forms
+
 import re
 import urllib2
 import json
 import sys
+import os
+import pickle
 
-WANIKANI_API_KEY = 'YOUR_API_KEY_HERE'
-KANJI_URL = 'http://www.wanikani.com/api/v1.1/user/{}/kanji'.format(WANIKANI_API_KEY)
-VOCAB_URL = 'http://www.wanikani.com/api/v1.1/user/{}/vocabulary'.format(WANIKANI_API_KEY)
-MODEL_NAME = "Basic" # Basic (and reversed card)" # also "Basic"
+KANJI_URL = 'http://www.wanikani.com/api/v1.1/user/{}/kanji'
+VOCAB_URL = 'http://www.wanikani.com/api/v1.1/user/{}/vocabulary'
+
+wkconf = { 'key': '', 'model_name': 'Basic', 'deck_separation': 'bothSeparately', 'card_direction': 'wanikaniDirection' }
 
 class WaniKaniImporter(NoteImporter):
     def __init__(self, *args):
@@ -108,47 +85,96 @@ def getjsonbolus(url):
     return parsed
 
 def getvocab():
-    return getjsonbolus(VOCAB_URL)
+    return getjsonbolus(VOCAB_URL.format(wkconf['key']))
 
 def getkanji():
-    return getjsonbolus(KANJI_URL)
-
-def showApiKey():
-    if WANIKANI_API_KEY and re.match('^[a-f0-9]{32}$', WANIKANI_API_KEY):
-        showInfo('WaniKani API Key: {}'.format(WANIKANI_API_KEY))
-    else:
-        showInfo('WaniKani API Key not defined!')
+    return getjsonbolus(KANJI_URL.format(wkconf['key']))
 
 def updateWaniKaniDeck():
-    kanjiJson = getkanji()
-    vocabJson = getvocab()
+    if not keyValid():
+        showInfo("We don't seem to have a valid WaniKani API Key, please try to configure it!")
+        return
+
+    if wkconf['deck_separation'] != 'vocabOnly':
+        kanjiJson = getkanji()
+    if wkconf['deck_separation'] != 'kanjiOnly':
+        vocabJson = getvocab()
 
     if not kanjiJson and not vocabJson:
         showInfo("WaniKani didn't respond to either request, not updating anything.")
         return
 
-    m = mw.col.models.byName(MODEL_NAME)
+    m = mw.col.models.byName(wkconf['model_name'])
     assert m
     mw.col.models.setCurrent(m)
-    m['did'] = mw.col.decks.id("WaniKani")
-    mw.col.models.save(m)
+
+    name1 = "WaniKani Kanji"
+    name2 = "WaniKani Vocab"
+    if wkconf['deck_separation'] == 'bothTogether':
+        name1 = "WaniKani"
+        name2 = "WaniKani"
+
     if kanjiJson:
+        m['did'] = mw.col.decks.id(name1)
+        mw.col.models.save(m)
         wki = KanjiImporter(mw.col,kanjiJson)
         wki.initMapping()
         wki.run()
     if vocabJson:
+        m['did'] = mw.col.decks.id(name2)
+        mw.col.models.save(m)
         wki = VocabImporter(mw.col,vocabJson)
         wki.initMapping()
         wki.run()
+
     mw.app.processEvents()
-    showInfo('WaniKani deck updated!')
+    showInfo('WaniKani deck(s) updated!')
     mw.deckBrowser.show()
 
-apiaction = QAction("Show WaniKani API Key", mw)
-mw.connect(apiaction, SIGNAL("triggered()"), showApiKey)
-mw.form.menuTools.addAction(apiaction)
+def readConf():
+    conffile = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".wanikani.conf")
+    if ( os.path.exists( conffile ) ):
+        conffile = conffile.decode(sys.getfilesystemencoding())
+        tmpconf = json.load(open(conffile, 'r'))
+        wkconf = tmpconf
 
-if WANIKANI_API_KEY and re.match('^[a-f0-9]{32}$', WANIKANI_API_KEY):
-    updateaction = QAction("Update WaniKani Deck", mw)
-    mw.connect(updateaction, SIGNAL("triggered()"), updateWaniKaniDeck)
-    mw.form.menuTools.addAction(updateaction)
+def writeConf():
+    conffile = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".wanikani.conf")
+    conffile = conffile.decode(sys.getfilesystemencoding())
+    json.dump( wkconf, open( conffile, 'w' ) )
+
+def keyValid():
+    return ( wkconf['key'] and re.match('^[a-f0-9]{32}$', wkconf['key']) )
+
+def showConfDialog():
+    d = QDialog()
+    form = forms.configuration.Ui_Dialog()
+    form.setupUi(d)
+
+    form.key.setText(wkconf['key'])
+    
+    button = d.findChild(QRadioButton,wkconf['deck_separation'])
+    if button:
+        button.setChecked(True)
+    button = d.findChild(QRadioButton,wkconf['card_direction'])
+    if button:
+        button.setChecked(True)
+
+    d.setWindowModality(Qt.WindowModal)
+
+    if d.exec_():
+        wkconf['key'] = form.key.text()
+        wkconf['model_name'] = 'Basic'
+        wkconf['deck_separation'] = form.deckSeparation.checkedButton().objectName()
+        wkconf['card_direction'] = form.cardDirection.checkedButton().objectName()
+        writeConf();
+
+readConf()
+
+confaction = QAction("Configure WaniKani 2 Anki", mw)
+mw.connect(confaction, SIGNAL("triggered()"), showConfDialog)
+mw.form.menuTools.addAction(confaction)
+
+updateaction = QAction("Update WaniKani Deck", mw)
+mw.connect(updateaction, SIGNAL("triggered()"), updateWaniKaniDeck)
+mw.form.menuTools.addAction(updateaction)
