@@ -16,7 +16,6 @@ import urllib2
 import json
 import sys
 import os
-import pickle
 
 KANJI_URL = 'http://www.wanikani.com/api/v1.1/user/{}/kanji'
 VOCAB_URL = 'http://www.wanikani.com/api/v1.1/user/{}/vocabulary'
@@ -27,6 +26,9 @@ class WaniKaniImporter(NoteImporter):
     def __init__(self, *args):
         NoteImporter.__init__(self, *args)
         self.allowHTML = True # see NoteImporter
+
+    def mappingOk(self):
+        return True
 
     def fields(self):
         return 2 # see NoteImporter
@@ -44,7 +46,7 @@ class WaniKaniImporter(NoteImporter):
 
     def noteFromJson(self,jsonDict):
         return None
-
+        
 class KanjiImporter(WaniKaniImporter):
     def __init(self, *args):
         WaniKaniImporter.__init(self, *args)
@@ -91,6 +93,7 @@ def getkanji():
     return getjsonbolus(KANJI_URL.format(wkconf['key']))
 
 def updateWaniKaniDeck():
+    global wkconf
     if not keyValid():
         showInfo("We don't seem to have a valid WaniKani API Key, please try to configure it!")
         return
@@ -107,31 +110,35 @@ def updateWaniKaniDeck():
         showInfo("WaniKani didn't respond to either request, not updating anything.")
         return
 
-    m = mw.col.models.byName(wkconf['model_name'])
-    assert m
-    mw.col.models.setCurrent(m)
-
-    name1 = "WaniKani Kanji"
-    name2 = "WaniKani Vocab"
+    name1 = "WaniKaniKanji"
+    name2 = "WaniKaniVocab"
     if wkconf['deck_separation'] == 'bothTogether':
         name1 = "WaniKani"
         name2 = "WaniKani"
 
+    m = mw.col.models.byName(wkconf['model_name'])
+    assert m
+    mw.col.models.setCurrent(m)
+    m['did'] = mw.col.decks.id(name1)
+    mw.col.models.save(m)
+
     if kanjiJson:
-        m['did'] = mw.col.decks.id(name1)
-        mw.col.models.save(m)
         wki = KanjiImporter(mw.col,kanjiJson)
         wki.initMapping()
         wki.run()
 
     if vocabJson:
-        m['did'] = mw.col.decks.id(name2)
-        mw.col.models.save(m)
+        # m = mw.col.models.byName(wkconf['model_name'])
+        # assert m
+        # mw.col.models.setCurrent(m)
+        # m['did'] = mw.col.decks.id(name2)
+        # mw.col.models.save(m)
         wki = VocabImporter(mw.col,vocabJson)
         wki.initMapping()
         wki.run()
 
     mw.app.processEvents()
+    mw.reset()
     showInfo('WaniKani deck(s) updated!')
     mw.deckBrowser.show()
 
@@ -176,6 +183,7 @@ def showConfDialog():
         writeConf();
 
     mw.app.processEvents()
+    mw.reset()
     mw.deckBrowser.show()
 
 readConf()
