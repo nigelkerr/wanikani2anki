@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './configuration.ui'
 #
-# Created: Sun Feb 10 21:33:03 2013
+# Created: Sun Feb 17 15:54:47 2013
 #      by: PyQt4 UI code generator 4.9.6
 #
 # WARNING! All changes made in this file will be lost!
@@ -63,10 +63,6 @@ class Ui_Dialog(object):
         self.vocabOnly.setObjectName(_fromUtf8("vocabOnly"))
         self.deckSeparation.addButton(self.vocabOnly)
         self.verticalLayout_2.addWidget(self.vocabOnly)
-        self.bothTogether = QtGui.QRadioButton(self.verticalLayoutWidget)
-        self.bothTogether.setObjectName(_fromUtf8("bothTogether"))
-        self.deckSeparation.addButton(self.bothTogether)
-        self.verticalLayout_2.addWidget(self.bothTogether)
         self.bothSeparately = QtGui.QRadioButton(self.verticalLayoutWidget)
         self.bothSeparately.setObjectName(_fromUtf8("bothSeparately"))
         self.deckSeparation.addButton(self.bothSeparately)
@@ -92,6 +88,12 @@ class Ui_Dialog(object):
         self.cardDirection.addButton(self.bothDirection)
         self.verticalLayout_3.addWidget(self.bothDirection)
         self.formLayout_2.setLayout(2, QtGui.QFormLayout.FieldRole, self.verticalLayout_3)
+        self.includeTangorinLink = QtGui.QCheckBox(self.verticalLayoutWidget)
+        self.includeTangorinLink.setObjectName(_fromUtf8("includeTangorinLink"))
+        self.formLayout_2.setWidget(3, QtGui.QFormLayout.FieldRole, self.includeTangorinLink)
+        self.updateWaniKaniDecks = QtGui.QPushButton(self.verticalLayoutWidget)
+        self.updateWaniKaniDecks.setObjectName(_fromUtf8("updateWaniKaniDecks"))
+        self.formLayout_2.setWidget(4, QtGui.QFormLayout.FieldRole, self.updateWaniKaniDecks)
         self.verticalLayout.addLayout(self.formLayout_2)
         spacerItem = QtGui.QSpacerItem(20, 30, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.verticalLayout.addItem(spacerItem)
@@ -108,17 +110,18 @@ class Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(_translate("Dialog", "Dialog", None))
-        self.label.setText(_translate("Dialog", "WaniKani 2 Anki Configuration", None))
+        self.label.setText(_translate("Dialog", "WaniKani 2 Anki", None))
         self.label_2.setText(_translate("Dialog", "WaniKani API Key", None))
         self.label_3.setText(_translate("Dialog", "Deck Separation", None))
         self.kanjiOnly.setText(_translate("Dialog", "Kanji Only", None))
         self.vocabOnly.setText(_translate("Dialog", "Vocab Only", None))
-        self.bothTogether.setText(_translate("Dialog", "Both Together", None))
-        self.bothSeparately.setText(_translate("Dialog", "Both Separately", None))
+        self.bothSeparately.setText(_translate("Dialog", "Both (Separately)", None))
         self.label_4.setText(_translate("Dialog", "Card Direction", None))
         self.wanikaniDirection.setText(_translate("Dialog", "WaniKani Direction", None))
         self.reverseDirection.setText(_translate("Dialog", "Reverse Direction", None))
         self.bothDirection.setText(_translate("Dialog", "Both Directions (two cards)", None))
+        self.includeTangorinLink.setText(_translate("Dialog", "Include Tangorin Link", None))
+        self.updateWaniKaniDecks.setText(_translate("Dialog", "Update WaniKani Decks", None))
 
 
 if __name__ == "__main__":

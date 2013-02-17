@@ -1,5 +1,6 @@
 # wanikani2anki, import unlocked Kanji and Vocab from WaniKani to a
-# deck in desktop Anki 2.0.x.  
+# deck in desktop Anki 2.0.x.  place this file in your desktop Anki 2
+# addons folder.
 
 # from https://github.com/nigelkerr/wanikani2anki and in the public
 # domain, with no sort of warranty whatsoever.
@@ -15,23 +16,21 @@ import re
 import urllib2
 import json
 import sys
-import os
 
+WANIKANI_API_KEY = '7cabb1e2050da36761ad124d447ad5e0'
 KANJI_URL = 'http://www.wanikani.com/api/v1.1/user/{}/kanji'
 VOCAB_URL = 'http://www.wanikani.com/api/v1.1/user/{}/vocabulary'
+KANJI_DECK = "WaniKani Kanji"
+VOCAB_DECK = "WaniKani Vocab"
+KANJI_MODEL = "WaniKani Kanji Model"
+VOCAB_MODEL = "WaniKani Vocab Model"
 
-wkconf = { 'key': '', 'model_name': 'Basic', 'deck_separation': 'bothSeparately', 'card_direction': 'wanikaniDirection' }
+wkconf = { 'key': '', 'deck_separation': 'bothSeparately', 'card_direction': 'wanikaniDirection', 'include_tangorin_link': False }
 
 class WaniKaniImporter(NoteImporter):
     def __init__(self, *args):
         NoteImporter.__init__(self, *args)
         self.allowHTML = True # see NoteImporter
-
-    def mappingOk(self):
-        return True
-
-    def fields(self):
-        return 2 # see NoteImporter
 
     def foreignNotes(self):
         notes = []
@@ -46,35 +45,49 @@ class WaniKaniImporter(NoteImporter):
 
     def noteFromJson(self,jsonDict):
         return None
-        
+
 class KanjiImporter(WaniKaniImporter):
     def __init(self, *args):
         WaniKaniImporter.__init(self, *args)
 
+    def fields(self):
+        return 5 # see NoteImporter
+
     def noteFromJson(self,jsonDict):
         note = ForeignNote()
-        tmpl = u"<span class='kanji back'><b>{}</b><br>{}<br>{}</span>"
-        if jsonDict[u'important_reading'] == u'kunyomi':
-            tmpl = u"<span class='kanji back'>{}<br><b>{}</b><br>{}</span>"
-        note.fields.append(u"<span class='kanji front'>{}</span>".format(jsonDict[u'character']))
-        note.fields.append(tmpl.format(jsonDict[u'onyomi'], jsonDict[u'kunyomi'], jsonDict[u'meaning']))
-        note.tags.append('kanji')
+        note.fields.append(jsonDict[u'character'])
+        
+        onyomi = jsonDict[u'onyomi'] if jsonDict[u'onyomi']  else u'none'
+        kunyomi = jsonDict[u'kunyomi'] if jsonDict[u'kunyomi'] else u'none'
+
+        if jsonDict[u'important_reading'] == u'onyomi':
+            note.fields.append(onyomi)
+        else:
+            note.fields.append(kunyomi)
+
+        note.fields.append(onyomi)
+        note.fields.append(kunyomi)
+        note.fields.append(jsonDict[u'meaning'])
+        note.tags.append("wk{0:s}".format(str(jsonDict[u'level'])))
         return note
 
 class VocabImporter(WaniKaniImporter):
     def __init(self, *args):
         WaniKaniImporter.__init(self, *args)
 
+    def fields(self):
+        return 3  # see NoteImporter
+
     def correctPart(self):
         return self.file[u'requested_information'][u'general']
 
     def noteFromJson(self, jsonDict):
         note = ForeignNote()
-        note.fields.append(u"<span class='vocab front'>{}</span>".format(jsonDict[u'character']))
-        note.fields.append(u"<span class='vocab back'>{}<br>{}</span>".format(jsonDict[u'kana'], jsonDict[u'meaning']))
-        note.tags.append('vocab')
+        note.fields.append(jsonDict[u'character'])
+        note.fields.append(jsonDict[u'kana'])
+        note.fields.append(jsonDict[u'meaning'])
+        note.tags.append("wk{0:s}".format(str(jsonDict[u'level'])))
         return note
-
 
 def getjsonbolus(url):
     parsed = None
@@ -92,12 +105,13 @@ def getvocab():
 def getkanji():
     return getjsonbolus(KANJI_URL.format(wkconf['key']))
 
-def updateWaniKaniDeck():
-    global wkconf
-    if not keyValid():
-        showInfo("We don't seem to have a valid WaniKani API Key, please try to configure it!")
-        return
+def showApiKey():
+    if WANIKANI_API_KEY and re.match('^[a-f0-9]{32}$', WANIKANI_API_KEY):
+        showInfo('WaniKani API Key: {}'.format(WANIKANI_API_KEY))
+    else:
+        showInfo('WaniKani API Key not defined!')
 
+def updateWaniKaniDeck():
     kanjiJson = None
     vocabJson = None
 
@@ -110,36 +124,79 @@ def updateWaniKaniDeck():
         showInfo("WaniKani didn't respond to either request, not updating anything.")
         return
 
-    name1 = "WaniKaniKanji"
-    name2 = "WaniKaniVocab"
-    if wkconf['deck_separation'] == 'bothTogether':
-        name1 = "WaniKani"
-        name2 = "WaniKani"
+    mm = mw.col.models
 
-    m = mw.col.models.byName(wkconf['model_name'])
-    assert m
-    mw.col.models.setCurrent(m)
-    m['did'] = mw.col.decks.id(name1)
-    mw.col.models.save(m)
+    tangorin = ""
+    if wkconf['include_tangorin_link']:
+        tangorin = "<br/><a href=\"http://www.tangorin.com/kanji/{{Kanji}}\">Tangorin</a>"
 
     if kanjiJson:
-        wki = KanjiImporter(mw.col,kanjiJson)
-        wki.initMapping()
-        wki.run()
-
+         wk_model = mm.byName(KANJI_MODEL)
+         if not wk_model:
+             wk_model = mm.new(KANJI_MODEL)
+             mm.addField(wk_model, mm.newField("Kanji"))
+             mm.addField(wk_model, mm.newField("Reading"))
+             mm.addField(wk_model, mm.newField("Onyomi"))
+             mm.addField(wk_model, mm.newField("Kunyomi"))
+             mm.addField(wk_model, mm.newField("Meaning"))
+             if wkconf['card_direction'] != 'reverseDirection':
+                 tmpl = mm.newTemplate("WaniKani Kanji Meaning")
+                 tmpl['qfmt'] = "<span style=\"font-size:100px;\">{{Kanji}}</span><br/>What is the <b>meaning</b>?"
+                 tmpl['afmt'] = "{{FrontSide}}\n\n<hr id='answer'>\n\n"\
+                     "<span style=\"font-size:30px;\">{{Meaning}}</span>"+tangorin
+                 mm.addTemplate(wk_model, tmpl)
+             if wkconf['card_direction'] != 'wanikaniDirection':
+                 tmpl = mm.newTemplate("WaniKani Kanji (Reading)")
+                 tmpl['qfmt'] = "<span style=\"font-size:100px;\">{{Kanji}}</span><br/>What is the <b>reading</b>?"
+                 tmpl['afmt'] = "{{FrontSide}}\n\n<hr id='answer'>\n\n"\
+                     "<span style=\"font-size:40px;\">"\
+                     "{{Reading}}</span><br/>"\
+                     "<div style=\"width:50%;float:left;\">"\
+                     "On'yomi:&nbsp;{{Onyomi}}"\
+                     "</div><div style=\"width:50%;float:left;\">"\
+                     "Kun'yomi:&nbsp;{{Kunyomi}}"\
+                     "</div><div style=\"clear:left;\"></div>"+tangorin
+                 mm.addTemplate(wk_model, tmpl)
+             mm.add(wk_model)
+         mm.setCurrent(wk_model)
+         wk_model['did'] = mw.col.decks.id(KANJI_DECK)
+         mm.save(wk_model)
+         wki = KanjiImporter(mw.col,kanjiJson)
+         wki.initMapping()
+         wki.run()
     if vocabJson:
-        # m = mw.col.models.byName(wkconf['model_name'])
-        # assert m
-        # mw.col.models.setCurrent(m)
-        # m['did'] = mw.col.decks.id(name2)
-        # mw.col.models.save(m)
-        wki = VocabImporter(mw.col,vocabJson)
-        wki.initMapping()
-        wki.run()
+         wk_model = mm.byName(VOCAB_MODEL)
+         if not wk_model:
+             wk_model = mm.new(VOCAB_MODEL)
+             mm.addField(wk_model, mm.newField("Expression"))
+             mm.addField(wk_model, mm.newField("Reading"))
+             mm.addField(wk_model, mm.newField("Meaning"))
+             if wkconf['card_direction'] != 'reverseDirection':
+                 tmpl = mm.newTemplate("WaniKani Vocab")
+                 tmpl['qfmt'] = "<span style=\"font-size:40px;\">"\
+                     "{{Expression}}</span>"
+                 tmpl['afmt'] = "{{FrontSide}}\n\n<hr id=answer>\n\n"\
+                     "<span style=\"font-size:25px;\">{{Reading}}</span>"\
+                     "<br/><span style=\"font-size:30px;\">{{Meaning}}</span>"+tangorin
+                 mm.addTemplate(wk_model, tmpl)
+             if wkconf['card_direction'] != 'wanikaniDirection':
+                 tmpl = mm.newTemplate("WaniKanii Vocab (flipped)")
+                 tmpl['qfmt'] = "<span style=\"font-size:30px;\">{{Meaning}}</span>"
+                 tmpl['afmt'] = "{{FrontSide}}\n\n<hr id=answer>\n\n"\
+                     "<span style=\"font-size:25px;\">{{Reading}}</span>"\
+                     "<br/><span style=\"font-size:40px;\">"\
+                     "{{Expression}}</span>"+tangorin
+                 mm.addTemplate(wk_model, tmpl)
+             mm.add(wk_model)
+         mm.setCurrent(wk_model)
+         wk_model['did'] = mw.col.decks.id(VOCAB_DECK)
+         mm.save(wk_model)
+         wki = VocabImporter(mw.col,vocabJson)
+         wki.initMapping()
+         wki.run()
 
     mw.app.processEvents()
-    mw.reset()
-    showInfo('WaniKani deck(s) updated!')
+    showInfo('Decks updated!')
     mw.deckBrowser.show()
 
 def readConf():
@@ -173,13 +230,19 @@ def showConfDialog():
     if button:
         button.setChecked(True)
 
+    button = d.findChild(QCheckBox,'includeTangorinLink')
+    button.setChecked(wkconf.get('include_tangorin_link', False))
+
+    button = d.findChild(QPushButton,'updateWaniKaniDecks')
+    button.clicked.connect(updateWaniKaniDeck)
+
     d.setWindowModality(Qt.WindowModal)
 
     if d.exec_():
         wkconf['key'] = form.key.text()
-        wkconf['model_name'] = 'Basic'
         wkconf['deck_separation'] = form.deckSeparation.checkedButton().objectName()
         wkconf['card_direction'] = form.cardDirection.checkedButton().objectName()
+        wkconf['include_tangorin_link'] = form.includeTangorinLink.isChecked()
         writeConf();
 
     mw.app.processEvents()
@@ -188,10 +251,6 @@ def showConfDialog():
 
 readConf()
 
-confaction = QAction("Configure WaniKani 2 Anki", mw)
+confaction = QAction("WaniKani 2 Anki", mw)
 mw.connect(confaction, SIGNAL("triggered()"), showConfDialog)
 mw.form.menuTools.addAction(confaction)
-
-updateaction = QAction("Update WaniKani Deck", mw)
-mw.connect(updateaction, SIGNAL("triggered()"), updateWaniKaniDeck)
-mw.form.menuTools.addAction(updateaction)

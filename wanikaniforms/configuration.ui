@@ -26,7 +26,7 @@
     <item>
      <widget class="QLabel" name="label">
       <property name="text">
-       <string>WaniKani 2 Anki Configuration</string>
+       <string>WaniKani 2 Anki</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
@@ -85,19 +85,9 @@
          </widget>
         </item>
         <item>
-         <widget class="QRadioButton" name="bothTogether">
-          <property name="text">
-           <string>Both Together</string>
-          </property>
-          <attribute name="buttonGroup">
-           <string>deckSeparation</string>
-          </attribute>
-         </widget>
-        </item>
-        <item>
          <widget class="QRadioButton" name="bothSeparately">
           <property name="text">
-           <string>Both Separately</string>
+           <string>Both (Separately)</string>
           </property>
           <attribute name="buttonGroup">
            <string>deckSeparation</string>
@@ -146,6 +136,20 @@
          </widget>
         </item>
        </layout>
+      </item>
+      <item row="3" column="1">
+       <widget class="QCheckBox" name="includeTangorinLink">
+        <property name="text">
+         <string>Include Tangorin Link</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QPushButton" name="updateWaniKaniDecks">
+        <property name="text">
+         <string>Update WaniKani Decks</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
