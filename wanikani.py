@@ -18,8 +18,8 @@ import json
 import sys
 
 WANIKANI_API_KEY = '7cabb1e2050da36761ad124d447ad5e0'
-KANJI_URL = 'http://www.wanikani.com/api/v1.1/user/{}/kanji'
-VOCAB_URL = 'http://www.wanikani.com/api/v1.1/user/{}/vocabulary'
+KANJI_URL = 'https://www.wanikani.com/api/v1.1/user/{}/kanji'
+VOCAB_URL = 'https://www.wanikani.com/api/v1.1/user/{}/vocabulary'
 KANJI_DECK = "WaniKani Kanji"
 VOCAB_DECK = "WaniKani Vocab"
 KANJI_MODEL = "WaniKani Kanji Model"
